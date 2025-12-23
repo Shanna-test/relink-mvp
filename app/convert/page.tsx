@@ -246,7 +246,11 @@ function ConvertPageContent() {
           request: nvcData.request,
           conversionText,
           messages: [
-            ...outgoing,
+            ...outgoing.map((msg) => ({
+              role: msg.role === "assistant" ? ("ai" as const) : ("user" as const),
+              content: msg.content,
+              timestamp: Date.now()
+            })),
             { role: "ai" as const, content: reply, timestamp: Date.now() },
             { role: "ai" as const, content: conversionText, timestamp: Date.now() }
           ],

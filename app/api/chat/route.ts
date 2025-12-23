@@ -1221,11 +1221,22 @@ export async function POST(request: Request) {
       stage: Stage;
     };
 
-    // 메시지 role 정규화: 'ai' -> 'assistant'
-    const messages: IncomingMessage[] = rawMessages.map((m: any) => ({
-      role: m.role === 'ai' ? 'assistant' : (m.role === 'user' ? 'user' : 'assistant'),
-      content: m.content
-    }));
+    // 메시지 role 정규화: 'ai' -> 'assistant' (모든 경우 처리)
+    const messages: IncomingMessage[] = rawMessages.map((m: any) => {
+      let normalizedRole: 'assistant' | 'user';
+      if (m.role === 'user') {
+        normalizedRole = 'user';
+      } else if (m.role === 'ai' || m.role === 'assistant') {
+        normalizedRole = 'assistant';
+      } else {
+        // 알 수 없는 role은 기본값으로 'assistant'
+        normalizedRole = 'assistant';
+      }
+      return {
+        role: normalizedRole,
+        content: m.content || ''
+      };
+    });
 
     // 환경 변수 확인
     const apiKey = process.env.OPENAI_API_KEY;
@@ -1623,7 +1634,7 @@ ${stagePrompt}`;
         messages: [
           { role: "system", content: systemMessage },
           ...messages.map((m) => ({ 
-            role: m.role === 'ai' ? 'assistant' : (m.role === 'user' ? 'user' : 'assistant'), 
+            role: m.role, // 이미 정규화됨
             content: m.content 
           })),
         ],
