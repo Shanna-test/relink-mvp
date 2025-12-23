@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { saveConversation } from "@/lib/storage";
 import type { Conversation } from "@/types";
 
-type Stage = "observation" | "feeling" | "need" | "request" | "result";
+type Stage = "observation" | "feeling" | "need" | "empathy" | "request" | "result";
 type ChatMessage = { role: "assistant" | "user"; content: string };
 
 const defaultOptions: Record<Stage, string[]> = {
   observation: [],
   feeling: ["화가 났어요", "서운했어요", "무시당한 느낌이었어요"],
   need: ["내 말도 들어주길 바랐어요", "존중받고 싶었어요", "이해받고 싶었어요"],
+  empathy: [],
   request: [
     "내 말이 끝날 때까지 기다려줄래?",
     "다음엔 먼저 물어봐줄래?",
@@ -20,7 +21,7 @@ const defaultOptions: Record<Stage, string[]> = {
   result: [],
 };
 
-export default function ConvertPage() {
+function ConvertPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const initialText = params.get("text") || "";
@@ -144,7 +145,18 @@ export default function ConvertPage() {
     })();
     setConversationData(updatedData);
 
-    const outgoing = [...messages, userMessage];
+    const outgoing = [
+      ...messages.map((msg) => ({ 
+        role: msg.role === "assistant" ? ("ai" as const) : ("user" as const), 
+        content: msg.content, 
+        timestamp: Date.now() 
+      })),
+      { 
+        role: "user" as const, 
+        content: userMessage.content, 
+        timestamp: Date.now() 
+      }
+    ];
     setIsLoading(true);
 
     try {
@@ -235,7 +247,11 @@ export default function ConvertPage() {
           need: nvcData.needs,
           request: nvcData.request,
           conversionText,
-          messages: [...outgoing, { role: "assistant", content: reply }, { role: "assistant", content: conversionText }],
+          messages: [
+            ...outgoing,
+            { role: "ai" as const, content: reply, timestamp: Date.now() },
+            { role: "ai" as const, content: conversionText, timestamp: Date.now() }
+          ],
           stage: "complete",
         };
         saveConversation(conversation);
@@ -474,7 +490,7 @@ export default function ConvertPage() {
                                 <div className="pl-4 text-[15px] text-gray-800 leading-relaxed">
                                   {(() => {
                                     const emotions = typeof nvcData.emotions === 'string' 
-                                      ? nvcData.emotions.split(',').map(e => e.trim()).filter(e => e)
+                                      ? nvcData.emotions.split(',').map((e: string) => e.trim()).filter((e: string) => e)
                                       : [];
                                     
                                     if (emotions.length === 0) return nvcData.emotions;
@@ -490,7 +506,7 @@ export default function ConvertPage() {
                                     // "하"를 추가하면 안 되는 감정들
                                     const noHaEmotions = ['분', '억울', '답답', '서운', '속상', '불안', '피곤', '난처', '무서', '부끄러', '두려'];
                                     
-                                    const converted = emotions.map(emotion => {
+                                    const converted = emotions.map((emotion: string) => {
                                       const base = emotionMap[emotion] || emotion.replace(/함$/, '하').replace(/남$/, '나').replace(/움$/, '워');
                                       // 여러 감정을 연결할 때는 "하"를 추가해야 함
                                       // 단, noHaEmotions에 포함된 감정은 "하"를 추가하지 않음
@@ -510,7 +526,7 @@ export default function ConvertPage() {
                                       result = `${converted[0]}고 ${converted[1]}했어요`;
                                     } else {
                                       const last = converted[converted.length - 1];
-                                      const rest = converted.slice(0, -1).map(e => `${e}고`).join(' ');
+                                      const rest = converted.slice(0, -1).map((e: string) => `${e}고`).join(' ');
                                       result = `${rest} ${last}했어요`;
                                     }
                                     
@@ -818,6 +834,18 @@ export default function ConvertPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConvertPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] text-gray-600">
+        로딩 중...
+      </div>
+    }>
+      <ConvertPageContent />
+    </Suspense>
   );
 }
 

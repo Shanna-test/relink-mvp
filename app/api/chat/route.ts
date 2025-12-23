@@ -220,10 +220,10 @@ function extractConversationData(messages: any[]): any {
     const content = m.content;
     // 쉼표로 구분된 감정 리스트 또는 JSON 배열
     if (content.includes(',')) {
-      const parts = content.split(',').map(e => e.trim());
+      const parts = content.split(',').map((e: string) => e.trim());
       // 감정 키워드가 포함되어 있으면 감정 선택 메시지로 간주
       const emotionKeywords = ['화남', '서운함', '속상함', '불안함', '외로움', '답답함', '억울함', '짜증남', '실망스러움', '무시당함'];
-      if (parts.some(p => emotionKeywords.some(k => p.includes(k)))) {
+      if (parts.some((p: string) => emotionKeywords.some((k: string) => p.includes(k)))) {
         return true;
       }
     }
@@ -242,7 +242,7 @@ function extractConversationData(messages: any[]): any {
       selectedEmotions = Array.isArray(parsed) ? parsed : [feelingMessage.content];
     } catch {
       // JSON 파싱 실패 시 쉼표로 구분된 문자열 처리
-      selectedEmotions = feelingMessage.content.split(',').map(e => e.trim()).filter(e => e);
+      selectedEmotions = feelingMessage.content.split(',').map((e: string) => e.trim()).filter((e: string) => e);
     }
   }
   
@@ -1097,7 +1097,7 @@ async function getEmotionsForSituation(situation: string, apiKey: string): Promi
       emotions = response
         .replace(/[\[\]"]/g, '')
         .split(',')
-        .map(e => e.trim())
+        .map((e: string) => e.trim())
         .filter(e => e);
     }
     
@@ -1185,7 +1185,7 @@ async function getNeedsForContext(situation: string, emotion: string, apiKey: st
       needs = response
         .replace(/[\[\]"]/g, '')
         .split(',')
-        .map(e => e.trim())
+        .map((e: string) => e.trim())
         .filter(e => e)
         .slice(0, 6);
     }
@@ -1354,7 +1354,7 @@ export async function POST(request: Request) {
         selectedEmotions = Array.isArray(parsed) ? parsed : [lastUserMessage];
       } catch {
         // JSON 파싱 실패 시 쉼표로 구분된 문자열 처리
-        selectedEmotions = lastUserMessage.split(',').map(e => e.trim()).filter(e => e);
+        selectedEmotions = lastUserMessage.split(',').map((e: string) => e.trim()).filter((e: string) => e);
       }
       
       // 직접 입력인 경우 (JSON이나 쉼표로 구분되지 않은 경우)
@@ -1421,7 +1421,7 @@ export async function POST(request: Request) {
         selectedNeeds = Array.isArray(parsed) ? parsed : [lastUserMessage];
       } catch {
         // JSON 파싱 실패 시 쉼표로 구분된 문자열 처리
-        selectedNeeds = lastUserMessage.split(',').map(e => e.trim()).filter(e => e);
+        selectedNeeds = lastUserMessage.split(',').map((e: string) => e.trim()).filter((e: string) => e);
       }
       
       // selectedNeeds가 비어있으면 기본값 사용

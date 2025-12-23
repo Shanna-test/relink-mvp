@@ -55,6 +55,10 @@ export default function ResultPage() {
     );
   }
 
+  if (!conversation) {
+    return null;
+  }
+
   const original = conversation.observation || conversation.situation || "기록 없음";
   const translated = conversation.conversionText || "번역 내용이 없습니다.";
 
