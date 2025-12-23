@@ -78,3 +78,16 @@ export const getRecentEmotionCheckIns = (count = 10): EmotionCheckIn[] => {
   return getEmotionCheckIns().slice(0, count);
 };
 
+export const getWeeklyEmotionCheckIns = (): EmotionCheckIn[] => {
+  const checkIns = getEmotionCheckIns();
+  const now = Date.now();
+  const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+  
+  return checkIns.filter(checkIn => checkIn.date >= oneWeekAgo);
+};
+
+export const getEmotionCheckInsByDateRange = (startDate: number, endDate: number): EmotionCheckIn[] => {
+  const checkIns = getEmotionCheckIns();
+  return checkIns.filter(checkIn => checkIn.date >= startDate && checkIn.date <= endDate);
+};
+

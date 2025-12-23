@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { emotionCategories } from "@/lib/emotions";
-import { saveEmotionCheckIn } from "@/lib/storage";
+import { saveEmotionCheckIn, getWeeklyEmotionCheckIns } from "@/lib/storage";
 import type { EmotionCheckIn } from "@/types";
 
 export default function CheckInPage() {
@@ -14,6 +14,14 @@ export default function CheckInPage() {
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
   const [situation, setSituation] = useState("");
   const [isAnimating, setIsAnimating] = useState(false);
+  const [weeklyCheckIns, setWeeklyCheckIns] = useState<EmotionCheckIn[]>([]);
+  
+  // 주간 기록 로드
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWeeklyCheckIns(getWeeklyEmotionCheckIns());
+    }
+  }, [step]); // step이 변경될 때마다 다시 로드 (새 기록 저장 후)
 
   const handleMainCategorySelect = (category: "uncomfortable" | "pleasant") => {
     setIsAnimating(true);
@@ -80,6 +88,41 @@ export default function CheckInPage() {
     (sub) => sub.id === selectedSubcategory
   );
 
+  // 주간 기록 데이터 가공
+  const weeklyData = useMemo(() => {
+    const now = Date.now();
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now - i * 24 * 60 * 60 * 1000);
+      const dayStart = new Date(date.setHours(0, 0, 0, 0)).getTime();
+      const dayEnd = new Date(date.setHours(23, 59, 59, 999)).getTime();
+      
+      const dayCheckIns = weeklyCheckIns.filter(
+        (checkIn) => checkIn.date >= dayStart && checkIn.date <= dayEnd
+      );
+      
+      days.push({
+        date: dayStart,
+        label: date.toLocaleDateString("ko-KR", { weekday: "short" }),
+        day: date.getDate(),
+        checkIns: dayCheckIns,
+        count: dayCheckIns.length,
+      });
+    }
+    return days;
+  }, [weeklyCheckIns]);
+
+  // 감정별 이모지 매핑 함수
+  const getEmotionEmoji = (emotion: string): string => {
+    for (const category of Object.values(emotionCategories)) {
+      for (const subcategory of category.subcategories) {
+        const found = subcategory.emotions.find((e) => e.label === emotion);
+        if (found) return found.emoji;
+      }
+    }
+    return "😊";
+  };
+
   return (
     <div
       className="min-h-screen w-full"
@@ -100,6 +143,118 @@ export default function CheckInPage() {
           </div>
           <div className="w-10" />
         </header>
+
+        {/* Weekly Summary - Only show on main step */}
+        {step === "main" && weeklyCheckIns.length > 0 && (
+          <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="rounded-2xl bg-white p-6 shadow-lg overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">이번 주 기록</h3>
+                  <p className="text-sm text-gray-500">최근 7일간의 감정 기록</p>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-br from-[#8B7FFF] to-[#9D92FF] text-white text-sm font-semibold shadow-sm">
+                  <span>{weeklyCheckIns.length}</span>
+                  <span className="text-xs opacity-90">건</span>
+                </div>
+              </div>
+
+              {/* Weekly Chart */}
+              <div className="space-y-4">
+                {/* Day bars */}
+                <div className="flex items-end justify-between gap-2 h-32">
+                  {weeklyData.map((day, idx) => {
+                    const maxCount = Math.max(...weeklyData.map((d) => d.count), 1);
+                    const height = (day.count / maxCount) * 100;
+                    const isToday = idx === weeklyData.length - 1;
+                    
+                    return (
+                      <div key={day.date} className="flex-1 flex flex-col items-center gap-2">
+                        {/* Bar */}
+                        <div className="relative w-full flex flex-col items-center justify-end h-24">
+                          {day.count > 0 ? (
+                            <div
+                              className={`w-full rounded-t-lg transition-all duration-500 hover:opacity-80 ${
+                                isToday
+                                  ? "bg-gradient-to-t from-[#8B7FFF] to-[#9D92FF] shadow-md"
+                                  : "bg-gradient-to-t from-purple-200 to-purple-300"
+                              }`}
+                              style={{
+                                height: `${Math.max(height, 8)}%`,
+                                minHeight: day.count > 0 ? "8px" : "0",
+                              }}
+                            >
+                              {/* Count badge */}
+                              {day.count > 0 && (
+                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center justify-center h-5 px-1.5 rounded-full bg-gray-900 text-white text-xs font-semibold whitespace-nowrap">
+                                  {day.count}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="w-full h-1 rounded-full bg-gray-100" />
+                          )}
+                        </div>
+                        
+                        {/* Day label */}
+                        <div className="text-center">
+                          <div className={`text-xs font-semibold ${
+                            isToday ? "text-[#8B7FFF]" : "text-gray-500"
+                          }`}>
+                            {day.label}
+                          </div>
+                          <div className={`text-xs mt-0.5 ${
+                            isToday ? "text-gray-900 font-bold" : "text-gray-400"
+                          }`}>
+                            {day.day}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Recent emotions timeline */}
+                {weeklyCheckIns.length > 0 && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                      최근 기록
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {weeklyCheckIns.slice(0, 8).map((checkIn) => {
+                        const date = new Date(checkIn.date);
+                        const timeStr = date.toLocaleTimeString("ko-KR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        
+                        return (
+                          <div
+                            key={checkIn.id}
+                            className="group relative flex items-center gap-2 rounded-xl px-3 py-2 bg-gradient-to-br from-gray-50 to-gray-100/50 hover:from-purple-50 hover:to-pink-50 transition-all duration-300 hover:scale-105 cursor-pointer"
+                            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
+                          >
+                            <span className="text-lg">{getEmotionEmoji(checkIn.emotion)}</span>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-gray-700">
+                                {checkIn.emotion}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                {isToday ? `오늘 ${timeStr}` : date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Progress Indicator */}
         {step !== "complete" && (
