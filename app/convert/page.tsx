@@ -147,14 +147,12 @@ function ConvertPageContent() {
 
     const outgoing = [
       ...messages.map((msg) => ({ 
-        role: msg.role === "assistant" ? ("ai" as const) : ("user" as const), 
-        content: msg.content, 
-        timestamp: Date.now() 
+        role: msg.role === "assistant" ? ("assistant" as const) : ("user" as const), 
+        content: msg.content
       })),
       { 
         role: "user" as const, 
-        content: userMessage.content, 
-        timestamp: Date.now() 
+        content: userMessage.content
       }
     ];
     setIsLoading(true);

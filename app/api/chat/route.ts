@@ -1616,7 +1616,10 @@ ${stagePrompt}`;
         model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemMessage },
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
+          ...messages.map((m) => ({ 
+            role: m.role === 'ai' ? 'assistant' : (m.role === 'user' ? 'user' : 'assistant'), 
+            content: m.content 
+          })),
         ],
         temperature: 0.7,
         max_tokens: 500,
