@@ -47,3 +47,34 @@ export const getConversationById = (id: string): Conversation | undefined => {
   return loadConversations().find((conversation) => conversation.id === id);
 };
 
+// Emotion Check-In Storage
+import { EmotionCheckIn } from '../types';
+
+const CHECKIN_STORAGE_KEY = 'relink_emotion_checkins';
+
+export const saveEmotionCheckIn = (checkIn: EmotionCheckIn) => {
+  if (!isBrowser()) return;
+  
+  const stored = window.localStorage.getItem(CHECKIN_STORAGE_KEY);
+  const checkIns: EmotionCheckIn[] = stored ? JSON.parse(stored) : [];
+  checkIns.unshift(checkIn);
+  window.localStorage.setItem(CHECKIN_STORAGE_KEY, JSON.stringify(checkIns));
+};
+
+export const getEmotionCheckIns = (): EmotionCheckIn[] => {
+  if (!isBrowser()) return [];
+  
+  const stored = window.localStorage.getItem(CHECKIN_STORAGE_KEY);
+  if (!stored) return [];
+  
+  try {
+    return JSON.parse(stored) as EmotionCheckIn[];
+  } catch {
+    return [];
+  }
+};
+
+export const getRecentEmotionCheckIns = (count = 10): EmotionCheckIn[] => {
+  return getEmotionCheckIns().slice(0, count);
+};
+
