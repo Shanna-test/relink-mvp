@@ -63,10 +63,10 @@ export default function Home() {
               💗 감정 체크인
             </button>
             <button
-              onClick={() => router.push("/history")}
+              onClick={() => router.push("/analysis")}
               className="flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-[#F9FAFB] hover:shadow-md"
             >
-              🕐 히스토리
+              📊 분석
             </button>
           </div>
         </header>
