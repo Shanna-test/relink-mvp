@@ -1216,10 +1216,16 @@ async function getNeedsForContext(situation: string, emotion: string, apiKey: st
 
 export async function POST(request: Request) {
   try {
-    const { messages, stage } = (await request.json()) as {
-      messages: IncomingMessage[];
+    const { messages: rawMessages, stage } = (await request.json()) as {
+      messages: any[];
       stage: Stage;
     };
+
+    // 메시지 role 정규화: 'ai' -> 'assistant'
+    const messages: IncomingMessage[] = rawMessages.map((m: any) => ({
+      role: m.role === 'ai' ? 'assistant' : (m.role === 'user' ? 'user' : 'assistant'),
+      content: m.content
+    }));
 
     // 환경 변수 확인
     const apiKey = process.env.OPENAI_API_KEY;
