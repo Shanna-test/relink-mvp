@@ -107,9 +107,36 @@ export default function CheckInPage() {
         day: date.getDate(),
         checkIns: dayCheckIns,
         count: dayCheckIns.length,
+        hasRecord: dayCheckIns.length > 0,
       });
     }
     return days;
+  }, [weeklyCheckIns]);
+
+  // 연속 기록 계산
+  const streakCount = useMemo(() => {
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 7; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      const dayStart = checkDate.getTime();
+      const dayEnd = checkDate.setHours(23, 59, 59, 999);
+      
+      const hasRecord = weeklyCheckIns.some(
+        (checkIn) => checkIn.date >= dayStart && checkIn.date <= dayEnd
+      );
+      
+      if (hasRecord) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
   }, [weeklyCheckIns]);
 
   // 감정별 이모지 매핑 함수
@@ -145,113 +172,91 @@ export default function CheckInPage() {
         </header>
 
         {/* Weekly Summary - Only show on main step */}
-        {step === "main" && weeklyCheckIns.length > 0 && (
+        {step === "main" && (
           <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="rounded-2xl bg-white p-6 shadow-lg overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">이번 주 기록</h3>
-                  <p className="text-sm text-gray-500">최근 7일간의 감정 기록</p>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-br from-[#8B7FFF] to-[#9D92FF] text-white text-sm font-semibold shadow-sm">
-                  <span>{weeklyCheckIns.length}</span>
-                  <span className="text-xs opacity-90">건</span>
-                </div>
-              </div>
-
-              {/* Weekly Chart */}
-              <div className="space-y-4">
-                {/* Day bars */}
-                <div className="flex items-end justify-between gap-2 h-32">
-                  {weeklyData.map((day, idx) => {
-                    const maxCount = Math.max(...weeklyData.map((d) => d.count), 1);
-                    const height = (day.count / maxCount) * 100;
-                    const isToday = idx === weeklyData.length - 1;
-                    
-                    return (
-                      <div key={day.date} className="flex-1 flex flex-col items-center gap-2">
-                        {/* Bar */}
-                        <div className="relative w-full flex flex-col items-center justify-end h-24">
-                          {day.count > 0 ? (
-                            <div
-                              className={`w-full rounded-t-lg transition-all duration-500 hover:opacity-80 ${
-                                isToday
-                                  ? "bg-gradient-to-t from-[#8B7FFF] to-[#9D92FF] shadow-md"
-                                  : "bg-gradient-to-t from-purple-200 to-purple-300"
-                              }`}
-                              style={{
-                                height: `${Math.max(height, 8)}%`,
-                                minHeight: day.count > 0 ? "8px" : "0",
-                              }}
-                            >
-                              {/* Count badge */}
-                              {day.count > 0 && (
-                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center justify-center h-5 px-1.5 rounded-full bg-gray-900 text-white text-xs font-semibold whitespace-nowrap">
-                                  {day.count}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="w-full h-1 rounded-full bg-gray-100" />
-                          )}
-                        </div>
-                        
-                        {/* Day label */}
-                        <div className="text-center">
-                          <div className={`text-xs font-semibold ${
-                            isToday ? "text-[#8B7FFF]" : "text-gray-500"
-                          }`}>
-                            {day.label}
-                          </div>
-                          <div className={`text-xs mt-0.5 ${
-                            isToday ? "text-gray-900 font-bold" : "text-gray-400"
-                          }`}>
-                            {day.day}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Recent emotions timeline */}
-                {weeklyCheckIns.length > 0 && (
-                  <div className="pt-4 border-t border-gray-100">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                      최근 기록
+            <div className="relative rounded-2xl bg-white p-6 shadow-lg overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+              {/* 연속 기록 카드 */}
+              {streakCount > 0 && (
+                <div className="mb-6 relative rounded-xl p-5 bg-gradient-to-br from-orange-50 to-orange-100/50 border border-orange-200/50">
+                  <div className="flex items-center justify-center gap-3 mb-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/80 shadow-sm">
+                      <svg className="w-6 h-6 text-[#8B7FFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {weeklyCheckIns.slice(0, 8).map((checkIn) => {
-                        const date = new Date(checkIn.date);
-                        const timeStr = date.toLocaleTimeString("ko-KR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                        const isToday = date.toDateString() === new Date().toDateString();
-                        
-                        return (
-                          <div
-                            key={checkIn.id}
-                            className="group relative flex items-center gap-2 rounded-xl px-3 py-2 bg-gradient-to-br from-gray-50 to-gray-100/50 hover:from-purple-50 hover:to-pink-50 transition-all duration-300 hover:scale-105 cursor-pointer"
-                            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
-                          >
-                            <span className="text-lg">{getEmotionEmoji(checkIn.emotion)}</span>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-semibold text-gray-700">
-                                {checkIn.emotion}
-                              </span>
-                              <span className="text-[10px] text-gray-400">
-                                {isToday ? `오늘 ${timeStr}` : date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {streakCount}일 연속!
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
+                  
+                  {/* 주간 달력 */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-xs font-semibold text-gray-600">
+                      {weeklyData.map((day) => (
+                        <div key={day.date} className="flex-1 text-center">
+                          {day.label}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      {weeklyData.map((day) => (
+                        <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5">
+                          <div className={`h-2 w-2 rounded-full transition-all ${
+                            day.hasRecord 
+                              ? "bg-[#8B7FFF] shadow-sm" 
+                              : "bg-gray-200"
+                          }`} />
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="text-center text-xs text-gray-500 mt-2">
+                      연속 기록을 이어가세요!
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 주간 기록이 없을 때 */}
+              {weeklyCheckIns.length === 0 && (
+                <div className="text-center py-8">
+                  <div className="text-sm text-gray-400 mb-2">아직 기록이 없어요</div>
+                  <div className="text-xs text-gray-300">오늘의 감정을 기록해보세요</div>
+                </div>
+              )}
+
+              {/* 주간 기록이 있을 때만 표시 */}
+              {weeklyCheckIns.length > 0 && streakCount === 0 && (
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold text-gray-700 mb-3">이번 주 기록</div>
+                  
+                  {/* 주간 달력 */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-xs font-semibold text-gray-600">
+                      {weeklyData.map((day) => (
+                        <div key={day.date} className="flex-1 text-center">
+                          {day.label}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      {weeklyData.map((day) => (
+                        <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5">
+                          <div className={`h-2 w-2 rounded-full transition-all ${
+                            day.hasRecord 
+                              ? "bg-[#8B7FFF] shadow-sm" 
+                              : "bg-gray-200"
+                          }`} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
