@@ -85,7 +85,9 @@ function convertEmotionToNatural(emotion: string): string {
     '당황함': '당황하', // "당황"은 "당황하"로 변환되어야 함
     '무서움': '무서',
     '부끄러움': '부끄러',
-    '두려움': '두려'
+    '두려움': '두려',
+    '힘듦': '힘들',
+    '힘든': '힘들'
   };
   
   // 매핑에 있으면 즉시 반환
@@ -440,13 +442,13 @@ async function generateNVCData(conversationData: any, needs: string[], apiKey: s
   // 감정 텍스트 (원본, 표시용)
   const emotionText = emotions.length > 0
     ? emotions.join(', ')
-    : '힘든';
+    : '힘들었어요';
   
   // 감정 (자연스러운 형태, 메시지용)
   // 명사형(화남, 당황함, 억울함) → 동사형(화나고, 당황하고, 억울하고) 변환
   // "하"를 추가하면 안 되는 감정들 (예: "분" → "분했어요", "분하했어요" ❌)
   // "당황"은 "당황하"로 변환되어야 하므로 제외
-  const noHaEmotions = ['분', '억울', '답답', '서운', '속상', '불안', '피곤', '난처', '무서', '부끄러', '두려'];
+  const noHaEmotions = ['분', '억울', '답답', '서운', '속상', '불안', '피곤', '난처', '무서', '부끄러', '두려', '힘들'];
   
   const emotionNatural = emotions.length > 1
     ? emotions.map((e: string) => {
@@ -474,7 +476,7 @@ async function generateNVCData(conversationData: any, needs: string[], apiKey: s
         }
         return natural;
       })()
-    : '힘든';
+    : '힘들';
   
   // 3. 욕구: 사용자가 선택한 욕구들을 자연스러운 문장으로 변환
   let needText = '';
@@ -608,10 +610,14 @@ async function generateNVCData(conversationData: any, needs: string[], apiKey: s
   // emotionNatural은 이미 "당황하고 속상하고..." 형태로 변환되어 있음
   // 하지만 혹시 모르니 다시 확인
   let emotionFinal = emotionNatural;
-  if (!emotionFinal || emotionFinal === '힘든') {
+  if (!emotionFinal || emotionFinal === '힘든' || emotionFinal === '힘들') {
     // 감정이 없으면 기본값
     emotionFinal = '힘들';
   }
+  
+  // "힘든하" → "힘들" 수정
+  emotionFinal = emotionFinal.replace(/힘든하/g, '힘들');
+  emotionFinal = emotionFinal.replace(/힘들하/g, '힘들');
   
   // "분고" → "분하고"로 수정 (고가 빠진 경우)
   emotionFinal = emotionFinal.replace(/분고/g, '분하고');
@@ -875,9 +881,12 @@ async function generateNVCData(conversationData: any, needs: string[], apiKey: s
       
       // 1. 감정 표현 오류 수정 (포괄적)
       // "~하했어요" → "~했어요" (모든 감정에 대해)
-      nvcMessage = nvcMessage.replace(/(분|억울|답답|서운|속상|불안|피곤|난처|무서|부끄러|두려)하했어요/g, '$1했어요');
-      nvcMessage = nvcMessage.replace(/(분|억울|답답|서운|속상|불안|피곤|난처|무서|부끄러|두려)하하고/g, '$1하고');
-      nvcMessage = nvcMessage.replace(/(분|억울|답답|서운|속상|불안|피곤|난처|무서|부끄러|두려)하했을/g, '$1했을');
+      nvcMessage = nvcMessage.replace(/(분|억울|답답|서운|속상|불안|피곤|난처|무서|부끄러|두려|힘들)하했어요/g, '$1했어요');
+      nvcMessage = nvcMessage.replace(/(분|억울|답답|서운|속상|불안|피곤|난처|무서|부끄러|두려|힘들)하하고/g, '$1하고');
+      nvcMessage = nvcMessage.replace(/(분|억울|답답|서운|속상|불안|피곤|난처|무서|부끄러|두려|힘들)하했을/g, '$1했을');
+      // "힘든하" → "힘들" 수정
+      nvcMessage = nvcMessage.replace(/힘든하/g, '힘들');
+      nvcMessage = nvcMessage.replace(/힘들하/g, '힘들');
       // "당황하" → "당황" (당황은 "하"를 받음)
       nvcMessage = nvcMessage.replace(/당황하하고/g, '당황하고');
       nvcMessage = nvcMessage.replace(/당황하했어요/g, '당황했어요');
@@ -897,6 +906,9 @@ async function generateNVCData(conversationData: any, needs: string[], apiKey: s
       // 상대방을 주어로 사용한 욕구를 "나" 중심으로 변환
       nvcMessage = nvcMessage.replace(/([가-힣]+)이 ([^가-힣]+)하길 바랐어요/g, '내가 $1으로부터 $2받고 싶었어요');
       nvcMessage = nvcMessage.replace(/([가-힣]+)가 ([^가-힣]+)하길 바랐어요/g, '내가 $1으로부터 $2받고 싶었어요');
+      // "내가" 중복 제거 (예: "내가 친절한 대우를 받고 싶고 내가 존중받고 싶어요" → "내가 친절한 대우를 받고 싶고 존중받고 싶어요")
+      nvcMessage = nvcMessage.replace(/내가 ([^가-힣]+) 내가/g, '내가 $1');
+      nvcMessage = nvcMessage.replace(/저는 ([^가-힣]+) 저는/g, '저는 $1');
       // 쉼표로 구분된 욕구를 "~고"로 연결 (모든 패턴)
       nvcMessage = nvcMessage.replace(/([^,\.\n]+싶어요), ([^,\.\n]+싶어요)/g, (match, p1, p2) => {
         const need1 = p1.replace(/싶어요$/, '싶고');
@@ -922,17 +934,19 @@ async function generateNVCData(conversationData: any, needs: string[], apiKey: s
       nvcMessage = nvcMessage.replace(/싶었고/g, '싶고');
       
       // 3. 부탁 표현 오류 수정 (포괄적)
-      // "~해줄" → "~해주세요" (모든 경우)
+      // "~해줄" → "~해주세요" (모든 경우, 전역 치환)
       nvcMessage = nvcMessage.replace(/요청해줄/g, '요청해주세요');
       nvcMessage = nvcMessage.replace(/해달라고 얘기해줄/g, '해달라고 얘기해주세요');
       // "~해줄래?" → "~해주세요" (부탁 부분만)
       nvcMessage = nvcMessage.replace(/해줄래\?/g, '해주세요');
       nvcMessage = nvcMessage.replace(/해줄래요\?/g, '해주세요');
-      // "~해줄" → "~해주세요" (문장 끝, 공백 뒤, 줄바꿈 뒤 등)
+      // "~해줄" → "~해주세요" (문장 끝, 공백 뒤, 줄바꿈 뒤 등, 전역 치환)
+      nvcMessage = nvcMessage.replace(/해줄(?=\s|$|\.|\n|,)/g, '해주세요');
       nvcMessage = nvcMessage.replace(/해줄$/g, '해주세요');
       nvcMessage = nvcMessage.replace(/해줄\s/g, '해주세요 ');
       nvcMessage = nvcMessage.replace(/해줄\./g, '해주세요.');
       nvcMessage = nvcMessage.replace(/해줄\n/g, '해주세요\n');
+      nvcMessage = nvcMessage.replace(/해줄,/g, '해주세요,');
       // "~해줄래?"는 질문형이지만 부탁이므로 "~해주세요"로 변환
       nvcMessage = nvcMessage.replace(/해줄래요\?/g, '해주세요');
       // 4. 욕구 중복 제거 (같은 욕구가 두 번 나오는 경우)
